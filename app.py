@@ -28,31 +28,19 @@ def home():
 @app.post("/predict-csv")
 def predict_csv():
     file = request.files["file"]
-
-
     df = pd.read_csv(file, header=None)
-
-   
     if df.shape == (8, 40):
         df = df.T  
-    
-    
+  
     if df.shape != (40, 8):
         return jsonify({
-            "error": "الملف يجب أن يحتوي على (8 صفوف × 40 عمود) أو (40 صف × 8 أعمدة)"
+            "error": "invalid file shape"
         }), 400
-
-    
     x = df.values.astype("float32")
-
-    
     x = np.expand_dims(x, axis=0)
-
-    
     model = get_model()
     pred = model.predict(x, verbose=0)
 
-    
     cls = int(np.argmax(pred, axis=1)[0]) + 1
 
     return jsonify({
