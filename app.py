@@ -25,49 +25,36 @@ CHANNELS = 8
 def home():
     return {"status": "running", "service": "EMG CNN-LSTM API"}
 
-
 @app.post("/predict-csv")
 def predict_csv():
     try:
-        file = request.files.get("file")
+        file = request.files["file"]
 
         if not file:
-            return jsonify({"error": "No file uploaded"}), 400
+            return jsonify({"error":"No file uploaded"}),400
 
-        df = pd.read_csv(file)
+        df = pd.read_csv(file, header=None)
 
-        if df.shape[1] != CHANNELS:
-            return jsonify({"error": "CSV must contain 8 columns"}), 400
+        values = df.values.flatten()
 
-        data = df.values.astype("float32")
+        if len(values) != 40:
+            return jsonify({
+                "error":"CSV must contain exactly 40 values"
+            }),400
 
-        if len(data) < WINDOW:
-            return jsonify({"error": "Need at least 40 rows"}), 400
+        x = np.array(values, dtype=np.float32).reshape(1,40,1)
 
-        windows = []
-        step = 10
+        pred = model.predict(x, verbose=0)
 
-        for i in range(0, len(data) - WINDOW + 1, step):
-            windows.append(data[i:i + WINDOW])
-
-        X = np.array(windows)
-
-        model = get_model()
-
-        preds = model.predict(X, verbose=0)
-
-        classes = np.argmax(preds, axis=1) + 1
-
-        final_class = int(np.bincount(classes).argmax())
+        cls = int(np.argmax(pred, axis=1)[0]) + 1
 
         return jsonify({
-            "class": final_class,
-            "windows_used": len(windows),
-            "predictions": classes.tolist()
+            "class": cls,
+            "raw_prediction": pred[0].tolist()
         })
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e)}),500
 
 
 if __name__ == "__main__":
