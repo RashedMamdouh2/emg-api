@@ -41,6 +41,7 @@ def predict_csv():
 
     # (8,40) -> (1,8,40)
     x = np.expand_dims(x, axis=0)
+    x = x.T
     model=get_model()
     pred = model.predict(x, verbose=0)
 
