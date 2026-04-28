@@ -27,34 +27,29 @@ def home():
 
 @app.post("/predict-csv")
 def predict_csv():
-    try:
-        file = request.files["file"]
+    file = request.files["file"]
 
-        if not file:
-            return jsonify({"error":"No file uploaded"}),400
+    df = pd.read_csv(file, header=None)
 
-        df = pd.read_csv(file, header=None)
-
-        values = df.values.flatten()
-
-        if len(values) != 40:
-            return jsonify({
-                "error":"CSV must contain exactly 40 values"
-            }),400
-
-        x = np.array(values, dtype=np.float32).reshape(1,40,1)
-
-        pred = model.predict(x, verbose=0)
-
-        cls = int(np.argmax(pred, axis=1)[0]) + 1
-
+    # لازم 8 صفوف و 40 عمود
+    if df.shape != (8, 40):
         return jsonify({
-            "class": cls,
-            "raw_prediction": pred[0].tolist()
-        })
+            "error": "CSV must be exactly 8 rows x 40 columns"
+        }), 400
 
-    except Exception as e:
-        return jsonify({"error": str(e)}),500
+    x = df.values.astype("float32")
+
+    # (8,40) -> (1,8,40)
+    x = np.expand_dims(x, axis=0)
+
+    pred = model.predict(x, verbose=0)
+
+    cls = int(np.argmax(pred, axis=1)[0]) + 1
+
+    return jsonify({
+        "class": cls,
+        "probabilities": pred[0].tolist()
+    })
 
 
 if __name__ == "__main__":
